@@ -268,6 +268,7 @@ void receiverTest() {
         receiver *r = receiverGet(i);
         if (!r)
             r = receiverCreate(i);
+	(void) r;
     }
     printf("%"PRIu64"\n", Modes.receiverCount);
     receiverTimeout(0, 1, mstime());

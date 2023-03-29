@@ -4,7 +4,6 @@ READSB_VERSION := "$(shell echo -n `cat version`; { git show -s --format=format:
 RTLSDR ?= no
 BLADERF ?= no
 PLUTOSDR ?= no
-AGGRESSIVE ?= no
 HAVE_BIASTEE ?= no
 TRACKS_UUID ?= no
 PRINT_UUIDS ?= no
