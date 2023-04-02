@@ -62,9 +62,6 @@
 #ifndef MODES_READSB_VERSION
 #define MODES_READSB_VERSION     "Unknown"
 #endif
-#define XSTR(x) STR(x)
-#define STR(x) #x
-#pragma message ( "The value of MODES_READSB_VERSION" XSTR(MODES_READSB_VERSION) )
 #ifndef MODES_READSB_VARIANT
 #define MODES_READSB_VARIANT     "readsb"
 #endif

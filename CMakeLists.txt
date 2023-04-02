@@ -1,79 +1,121 @@
 cmake_minimum_required(VERSION 3.20)
+project(readsb C)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
 include(CMakeDependentOption)
-project(readsb)
+include(FindThreads)
 
-set(LIBS "-pthread -lpthread -lm -lrt -lzst")
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMake/Modules)
 
+include(FindLibRTLSDR)
 
-SET(READSB_VERSION "Apekatten")
+########################################################################
+# Get version info from Git
+########################################################################
+include(GetGitRevisionDescription)
+get_git_head_revision(GIT_REFSPEC GIT_COMMIT)
+if(GIT_COMMIT) # is a git repo
+    # shorten branch spec
+    string(REGEX REPLACE ".*/" "" GIT_BRANCH "${GIT_REFSPEC}")
+    # use lightweight (non-annotated) tags
+    git_describe(GIT_VERSION "--tags")
+    git_timestamp(GIT_TIMESTAMP)
+    message(STATUS "Found Git version: ${GIT_REFSPEC} commit ${GIT_COMMIT} from ${GIT_TIMESTAMP_ISO}")
+    message(STATUS "Using Git version tag: ${GIT_VERSION} on ${GIT_BRANCH} at ${GIT_TIMESTAMP}")
+    ADD_COMPILE_DEFINITIONS(MODES_READSB_VERSION="${GIT_VERSION}")
+#    ADD_DEFINITIONS(-DGIT_BRANCH=${GIT_BRANCH})
+#    ADD_DEFINITIONS(-DGIT_TIMESTAMP=${GIT_TIMESTAMP})
+#    SET(READSB_VERSION )
+endif()
 
-option(ENABLE_RTLSDR "Do you want to enable RTLSDR?" OFF)
-cmake_dependent_option(HAVE_BIASTEE "Would you enable BIASTEE?" ON "ENABLE_RTLSDR" OFF)
-option(ENABLE_BLADERF "Do you want to enable BLADERF?" OFF)
-option(ENABLE_PLUTOSDR "Do you want to enable PLUTOSDR?" OFF)
+option(RTLSDR "Do you want to enable RTLSDR?" OFF)
+cmake_dependent_option(HAVE_BIASTEE "Would you enable BIASTEE?" ON "RTLSDR" OFF)
+option(BLADERF "Do you want to enable BLADERF?" OFF)
+option(PLUTOSDR "Do you want to enable PLUTOSDR?" OFF)
 option(TRACK_UUID "Track UUID" OFF)
 option(PRINT_UUID "Print UUID" OFF)
 
-set(DIALECT "-std=c11")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${DIALECT} -W -D_GNU_SOURCE -D_DEFAULT_SOURCE \
--Wall -Werror -fno-common -O2 -Wdate-time -D_FORTIFY_SOURCE=2 -fstack-protector-strong \
--Wformat -Werror=format-security -DMODES_READSB_VERSION=\"${READSB_VERSION}\" \
-${LIBS}"
-)
-	
+set(CMAKE_C_STANDARD 11)
+add_definitions(-W)
+add_definitions(-Wall)
+add_definitions(-Werror)
+add_definitions(-fno-common)
+add_definitions(-O2)
+add_definitions(-Wdate-time)
+add_definitions(-fstack-protector-strong)
+add_definitions(-Wformat)
+add_definitions(-Werror=format-security)
+add_definitions(-Wno-format-truncation)
 
-
-set(SOURCES
-	src/readsb.c
-	src/argp.c
-	src/anet.c
-	src/interactive.c
-	src/mode_ac.c
-	src/mode_s.c
-	src/comm_b.c
-	src/json_out.c
-	src/net_io.c
-	src/crc.c
-	src/demod_2400.c
-	extras/uat2esnt/uat2esnt.c
-	extras/uat2esnt/uat_decode.c
-	src/stats.c
-	src/cpr.c
-	src/icao_filter.c
-	src/track.c
-	src/util.c
-	src/fasthash.c
-	src/convert.c
-	src/sdr_ifile.c
-	src/sdr_beast.c
-	src/ais_charset.c
-	src/globe_index.c
-	src/geomag.c
-	src/receiver.c
-	src/aircraft.c
-	src/api.c
-	src/threadpool.c
-)
-SET(EXTRA_SOURCES
-	src/cprtests.c
-	src/feature_test.c
-	src/hello.c
-	src/sdr_bladerf.c
-	src/sdr.c
-	src/sdr_plutosdr.c
-	src/sdr_rtlsdr.c
-	src/sdr_ubladerf.c
+add_compile_definitions(
+  _GNU_SOURCE
+  _DEFAULT_SOURCE
+  _FORTIFY_SOURCE=2
 )
 
-add_library(minilzo STATIC extras/minilzo/minilzo.c extras/minilzo/minilzo.h)
+include_directories(
+  BEFORE ${PROJECT_SOURCE_DIR}/inc
+  PUBLIC ${PROJECT_SOURCE_DIR}/extras
+)
 
 add_executable(readsb 
-				src/readsb.c
-				${SOURCES}
+  src/readsb.c
 )
-target_link_libraries(readsb minilzo)
-target_include_directories(readsb
-	PUBLIC inc
-	PUBLIC extras
+
+add_subdirectory(inc)
+add_subdirectory(src)
+add_subdirectory(extras/minilzo)
+add_subdirectory(extras/uat2esnt)
+
+target_link_libraries(readsb
+        readsb_base
+        minilzo
+        uat2esnt
+        zstd
 )
+
+if(ZLIB_STATIC STREQUAL "yes")
+  target_link_libraries(readsb :libz.a)
+else()
+  target_link_libraries(readsb z)
+endif()
+
+if(DISABLE_INTERACTIVE STREQUAL "yes")
+  target_compile_definitions(readsb DISABLE_INTERACTIVE)
+else()
+  include(FindCurses)
+  include_directories( PUBLIC ${CURSES_INCLUDE_DIRS} )
+  target_link_libraries(readsb ${CURSES_LIBRARIES})
+endif()
+
+if(HISTORY STREQUAL "yes")
+  target_compile_definitions(readsb ALL_JSON=1)
+endif()
+
+if(PREAMBLE_THRESHOLD_DEFAULT)
+  target_compile_definitions(readsb PREAMBLE_THRESHOLD_DEFAULT=${PREAMBLE_THRESHOLD_DEFAULT})
+endif()
+
+if(GLOBE_PERM_IVAL)
+  target_compile_definitions(readsb GLOBE_PERM_IVAL=${GLOBE_PERM_IVAL})
+endif()
+
+if(TRACE_THREADS)
+  target_compile_definitions(readsb TRACE_THREADS=${TRACE_THREADS})
+endif()
+
+if(TRACE_RECENT_POINTS)
+  target_compile_definitions(readsb TRACE_RECENT_POINTS=${TRACE_RECENT_POINTS})
+endif()
+
+if(AIRCRAFT_HASH_BITS)
+  target_compile_definitions(readsb AIRCRAFT_HASH_BITS=${AIRCRAFT_HASH_BITS})
+endif()
+
+if(STATS_PHASE STREQUAL "yes")
+  target_compile_definitions(readsb STATS_PHASE)
+endif()
+
+if(TRACKS_UUID STREQUAL "yes")
+  target_compile_definitions(readsb TRACKS_UUID)
+endif()
 
