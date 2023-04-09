@@ -44,8 +44,10 @@ add_definitions(-Wdate-time)
 add_definitions(-fstack-protector-strong)
 add_definitions(-Wformat)
 add_definitions(-Werror=format-security)
+add_definitions(-Wno-unused-but-set-variable)
+if(CMAKE_C_COMPILER_ID MATCHES "GNU")
 add_definitions(-Wno-format-truncation)
-
+endif()
 add_compile_definitions(
   _GNU_SOURCE
   _DEFAULT_SOURCE
