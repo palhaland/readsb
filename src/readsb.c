@@ -779,7 +779,7 @@ static void *decodeEntryPoint(void *arg) {
 
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
-    int64_t now;
+    int64_t now = mstime();
     int64_t mono = mono_milli_seconds();
     if (Modes.net_only) {
         while (!Modes.exit) {
