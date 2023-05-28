@@ -25,6 +25,7 @@
 #define NETIO_H
 
 #include <sys/socket.h>
+#include <netdb.h>
 
 // Describes a networking service (group of connections)
 

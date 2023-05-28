@@ -13,6 +13,7 @@ DIALECT = -std=c11
 CFLAGS = $(DIALECT) -W -D_GNU_SOURCE -D_DEFAULT_SOURCE -Wall -Werror -fno-common -O2
 CFLAGS += -DMODES_READSB_VERSION=\"$(READSB_VERSION)\"
 CFLAGS += -Wdate-time -D_FORTIFY_SOURCE=2 -fstack-protector-strong -Wformat -Werror=format-security
+CFLAGS += -Wno-unused-variable -Wno-unused-but-set-variable
 
 LIBS = -pthread -lpthread -lm -lrt -lzstd
 
